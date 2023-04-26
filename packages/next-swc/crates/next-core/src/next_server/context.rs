@@ -19,6 +19,7 @@ use turbo_binding::{
         turbopack::{
             condition::ContextCondition,
             module_options::{
+                CustomEcmascriptTransformPlugins, CustomEcmascriptTransformPluginsVc,
                 JsxTransformOptions, ModuleOptionsContext, ModuleOptionsContextVc,
                 PostCssTransformOptions, TypescriptTransformOptions, WebpackLoadersOptions,
             },
@@ -38,7 +39,9 @@ use crate::{
     next_build::{get_external_next_compiled_package_mapping, get_postcss_package_mapping},
     next_config::NextConfigVc,
     next_import_map::get_next_server_import_map,
-    next_shared::resolve::UnsupportedModulesResolvePluginVc,
+    next_shared::{
+        resolve::UnsupportedModulesResolvePluginVc, transforms::get_relay_transform_plugin,
+    },
     transform_options::{
         get_decorators_transform_options, get_emotion_compiler_config, get_jsx_transform_options,
         get_styled_components_compiler_config, get_typescript_transform_options,
@@ -267,6 +270,18 @@ pub async fn get_server_module_options_context(
     let enable_emotion = *get_emotion_compiler_config(next_config).await?;
     let enable_styled_components = *get_styled_components_compiler_config(next_config).await?;
 
+    let mut before_core_transform_plugins = vec![];
+    if let Some(relay_transform_plugin) = *get_relay_transform_plugin(next_config).await? {
+        before_core_transform_plugins.push(relay_transform_plugin);
+    }
+
+    let custom_ecma_transform_plugins = Some(CustomEcmaTransformPluginsVc::cell(
+        CustomEcmaTransformPlugins {
+            before: before_core_transform_plugins,
+            after: vec![],
+        },
+    ));
+
     let module_options_context = match ty.into_value() {
         ServerContextType::Pages { .. } | ServerContextType::PagesData { .. } => {
             let module_options_context = ModuleOptionsContext {
@@ -301,6 +316,7 @@ pub async fn get_server_module_options_context(
                     ),
                 ],
                 custom_rules,
+                custom_ecma_transform_plugins,
                 ..module_options_context
             }
         }
@@ -340,6 +356,7 @@ pub async fn get_server_module_options_context(
                     ),
                 ],
                 custom_rules,
+                custom_ecma_transform_plugins,
                 ..module_options_context
             }
         }
@@ -383,6 +400,7 @@ pub async fn get_server_module_options_context(
                     ),
                 ],
                 custom_rules,
+                custom_ecma_transform_plugins,
                 ..module_options_context
             }
         }
@@ -412,6 +430,7 @@ pub async fn get_server_module_options_context(
                     ),
                 ],
                 custom_rules,
+                custom_ecma_transform_plugins,
                 ..module_options_context
             }
         }
@@ -445,6 +464,7 @@ pub async fn get_server_module_options_context(
                     ),
                 ],
                 custom_rules,
+                custom_ecma_transform_plugins,
                 ..module_options_context
             }
         }
